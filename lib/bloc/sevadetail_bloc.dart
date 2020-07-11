@@ -77,4 +77,9 @@ class SevadetailBloc extends Bloc<SevadetailEvent, SevadetailState> {
     yield SevadetailState.sevadetailsLoaded(brands: brands);
   }
 
+
+
+
+
+
   }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterrazorpay/models/SevaName.dart';
 import 'package:flutterrazorpay/bloc/sevadetail_bloc.dart';
-import 'package:flutterrazorpay/repository/seva_bloc_repository.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 void main() => runApp(MyApp());
 
@@ -26,34 +26,35 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
-      body: Padding(
+        body: Padding(
           padding: EdgeInsets.all(20.0),
-          child: BlocProvider(create: (context) => SevadetailBloc(),
-          child: MyHomePage(),),
-      ),
+          child: BlocProvider(
+            create: (context) => SevadetailBloc(),
+            child: MyHomePage(),
+          ),
+        ),
       ),
     );
   }
 }
 
-
-class MyHomePage extends StatefulWidget{
+class MyHomePage extends StatefulWidget {
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
   DateTime selectedDate;
+  Razorpay _razorpay;
 
   List<SevaName> sevadetails = new List<SevaName>();
 
-  String value = 'usa';
+  // String value = 'usa'; Don't use value which doesn't exist in dropdown list
+  String value; //Better to initialize with null
 
   String buttonvaluetext = '';
 
-  String sevadetailtext = '',
-      buttonvalue1 = '';
-
+  String sevadetailtext = '', buttonvalue1 = '';
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _gothramController = TextEditingController();
@@ -77,7 +78,12 @@ class _MyHomePageState extends State<MyHomePage> {
     _sevadetailBloc = BlocProvider.of<SevadetailBloc>(context);
     _nameController.addListener(_onnameChanged);
     _gothramController.addListener(_ongothramChanged);
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
+
 
 
   String buttonvalue() {
@@ -90,7 +96,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-
   String sevatextdetail() {
     for (var seva in sevadetails) {
       if (seva.sevaname == value) {
@@ -99,7 +104,6 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
   }
-
 
   @override
   void dispose() {
@@ -112,23 +116,20 @@ class _MyHomePageState extends State<MyHomePage> {
     // TODO: implement build
     return BlocBuilder<SevadetailBloc, SevadetailState>(
       builder: (context, state) {
-        if() {}
-      }
-        Column(
+        //   if() {}
+        // }
+        return Column(
           children: <Widget>[
             TextFormField(
               controller: _nameController,
-              decoration: InputDecoration(
-                  labelText: 'Enter your username'
-              ),
+              decoration: InputDecoration(labelText: 'Enter your username'),
             ),
             TextFormField(
               controller: _gothramController,
-              decoration: InputDecoration(
-                  labelText: 'Enter your gothram'
-              ),
+              decoration: InputDecoration(labelText: 'Enter your gothram'),
             ),
             DropdownButton<String>(
+              value: value, //Assign value
               icon: Icon(Icons.arrow_drop_down),
               iconSize: 24,
               elevation: 16,
@@ -138,12 +139,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 color: Colors.deepPurpleAccent,
               ),
               onChanged: (String data) {
-                setState() {
+                // setState() {
+                //   value = data;
+                // }; Parenthesis was missing
+                setState(() {
                   value = data;
-                }
+                });
               },
-              items: sevadetails.map<DropdownMenuItem<String>>((
-                  SevaName value) {
+              items:
+              sevadetails.map<DropdownMenuItem<String>>((SevaName value) {
                 return DropdownMenuItem<String>(
                   value: value.sevaname,
                   child: Text(value.sevaname),
@@ -160,17 +164,46 @@ class _MyHomePageState extends State<MyHomePage> {
               lastDate: DateTime(2021),
             ),
             Text('Selected Item = ' + '$sevadetailtext',
-                style: TextStyle
-                  (fontSize: 22,
-                    color: Colors.black)),
+                style: TextStyle(fontSize: 22, color: Colors.black)),
             MaterialButton(
               child: Text('$buttonvalue1'),
               shape: Border.all(width: 2.0, color: Colors.redAccent),
-              onPressed: () {},
+              onPressed: () {openCheckout();},
             ),
           ],
         );
       },
     );
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    Scaffold.of(context).showSnackBar(SnackBar(content:Text("SUCCESS: " + response.paymentId)));
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    Scaffold.of(context).showSnackBar(SnackBar(content:Text("ERROR: " + response.code.toString() + " - " + response.message,)));
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    Scaffold.of(context).showSnackBar(SnackBar(content:Text("EXTERNAL_WALLET: " + response.walletName)));
+  }
+
+  void openCheckout() async {
+    var options = {
+      'key': 'rzp_test_7Ie8SGczM1KO0d',
+      'amount': 2000,
+      'name': 'Acme Corp.',
+      'description': 'Fine T-Shirt',
+      'prefill': {'contact': '8888888888', 'email': 'test@razorpay.com'},
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint(e);
+    }
   }
 }

@@ -27,7 +27,10 @@ dependencies:
   date_field: ^0.1.2
   equatable: ^1.1.1
   flutter_bloc: ^4.0.0
+  razorpay_flutter: ^1.1.4
   bloc: ^4.0.0
+  fluttertoast: ^6.0.1
+
 
 
 
